@@ -23,15 +23,14 @@ void atualiza_grid(int grid[ROWS][COLS], int buffer[ROWS][COLS]) {
 
             if (n < 2 || n > 3) 
                 buffer[i][j] = 0;
-            else {
-                if (n == 3) {
+            else
+                if (n == 3)
                     buffer[i][j] = 1;
-                } else
+                else
                     if (grid[i][j] == 0)
                         buffer[i][j] = 0;
                     else
                         buffer[i][j] = 1;
-            }
         }
 }
 
@@ -45,7 +44,7 @@ void reseta_cursor(int lins, int cols) {
 void imprime_grid(int grid[ROWS][COLS]) {
     // impressao subpixel
     for (int i = 0; i < ROWS; i += 2) {
-        for (int j = 0; j < COLS; j++) {
+        for (int j = 0; j < COLS; j++)
             if (grid[i][j] == 0)
                 if (grid[i+1][j] == 0)
                     printf(" ");
@@ -57,7 +56,6 @@ void imprime_grid(int grid[ROWS][COLS]) {
                 else
                     printf("█");
 
-        }
         printf("\n");
     }
     
