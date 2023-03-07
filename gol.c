@@ -1,25 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#define MAXX 10
-#define MAXY 10
+#define ROWS 10
+#define COLS 10
 
-int conta_vizinhos(int grid[MAXX][MAXY], int posx, int posy) {
+int conta_vizinhos(int grid[ROWS][COLS], int posx, int posy) {
     int soma = 0;
     
     for (int i = -1; i <= 1; i++)
         for (int j = -1; j <= 1; j++)
             // wrap around
-            soma += grid[ (posx + i + MAXX) % MAXX ][ (posy + j + MAXY) % MAXY ];
+            soma += grid[ (posx + i + ROWS) % ROWS ][ (posy + j + COLS) % COLS ];
 
     soma -= grid[posx][posy];
 
     return soma;
 }
 
-void atualiza_grid(int grid[MAXX][MAXY], int buffer[MAXX][MAXY]) {
-    for (int i = 0; i < MAXX; i++)
-        for (int j = 0; j < MAXY; j++) {
+void atualiza_grid(int grid[ROWS][COLS], int buffer[ROWS][COLS]) {
+    for (int i = 0; i < ROWS; i++)
+        for (int j = 0; j < COLS; j++) {
             int n = conta_vizinhos(grid, i, j);
 
             if (n < 2 || n > 3) 
@@ -43,10 +43,10 @@ void reseta_cursor(int lins, int cols) {
     printf("\033[%dD", cols);
 }
 
-void imprime_grid(int grid[MAXX][MAXY]) {
+void imprime_grid(int grid[ROWS][COLS]) {
     // impressao subpixel
-    for (int i = 0; i < MAXX; i += 2) {
-        for (int j = 0; j < MAXY; j++) {
+    for (int i = 0; i < ROWS; i += 2) {
+        for (int j = 0; j < COLS; j++) {
             if (grid[i][j] == 0)
                 if (grid[i+1][j] == 0)
                     printf(" ");
@@ -62,12 +62,12 @@ void imprime_grid(int grid[MAXX][MAXY]) {
         printf("\n");
     }
     
-    reseta_cursor(MAXX/2, MAXY);
+    reseta_cursor(ROWS/2, COLS);
 }
 
-void copia_matriz(int a[MAXX][MAXY], int b[MAXX][MAXY]) {
-    for (int i = 0; i < MAXX; i++)
-        for (int j = 0; j < MAXY; j++)
+void copia_matriz(int a[ROWS][COLS], int b[ROWS][COLS]) {
+    for (int i = 0; i < ROWS; i++)
+        for (int j = 0; j < COLS; j++)
             a[i][j] = b[i][j];
 }
 
@@ -75,20 +75,13 @@ int main() {
     printf("Aperte Ctrl+C para sair.\n\n");
     /* printf("\033[?25l"); */
 
-    int grid[MAXX][MAXY] = {
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 1, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
-        {0, 0, 0, 1, 1, 1, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+    int grid[ROWS][COLS] = {
+        {0, 1, 0},
+        {0, 0, 1},
+        {1, 1, 1}
     };
 
-    int buffer[MAXX][MAXY];
+    int buffer[ROWS][COLS];
 
     while(1) {
         usleep(100 * 1000);
