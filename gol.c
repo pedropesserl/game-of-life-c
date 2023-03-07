@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #define MAXX 10
-#define MAXY 16
+#define MAXY 10
 
 int conta_vizinhos(int grid[MAXX][MAXY], int posx, int posy) {
     int soma = 0;
@@ -37,12 +37,10 @@ void atualiza_grid(int grid[MAXX][MAXY], int buffer[MAXX][MAXY]) {
 }
 
 void reseta_cursor(int lins, int cols) {
-    for (int j = 0; j <= lins; j++)
-        // mover para cima
-        printf("\033[A");
-    for (int i = 0; i < cols; i++)
-        // mover para a esquerda
-        printf("\033[D");
+    // mover para cima
+    printf("\033[%dA", lins);
+    //mover para a esquerda
+    printf("\033[%dD", cols);
 }
 
 void imprime_grid(int grid[MAXX][MAXY]) {
@@ -65,7 +63,7 @@ void imprime_grid(int grid[MAXX][MAXY]) {
     }
     printf("\n");
     
-    reseta_cursor(MAXX/2, MAXY);
+    reseta_cursor(MAXX/2 + 1, MAXY);
 }
 
 void copia_matriz(int a[MAXX][MAXY], int b[MAXX][MAXY]) {
