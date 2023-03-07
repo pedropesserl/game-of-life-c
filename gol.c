@@ -61,9 +61,8 @@ void imprime_grid(int grid[MAXX][MAXY]) {
         }
         printf("\n");
     }
-    printf("\n");
     
-    reseta_cursor(MAXX/2 + 1, MAXY);
+    reseta_cursor(MAXX/2, MAXY);
 }
 
 void copia_matriz(int a[MAXX][MAXY], int b[MAXX][MAXY]) {
@@ -74,6 +73,7 @@ void copia_matriz(int a[MAXX][MAXY], int b[MAXX][MAXY]) {
 
 int main() {
     printf("Aperte Ctrl+C para sair.\n\n");
+    /* printf("\033[?25l"); */
 
     int grid[MAXX][MAXY] = {
         {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
