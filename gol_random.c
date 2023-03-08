@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
@@ -6,8 +8,8 @@
 #include <termios.h>
 #include <signal.h>
 
-#define ROWS 10
-#define COLS 10
+int ROWS;
+int COLS;
 
 int quit = 0;
 
@@ -83,9 +85,9 @@ void atualiza_grid(int grid[ROWS][COLS], int buffer[ROWS][COLS]) {
         }
 }
 
-void reseta_cursor(int lins, int cols) {
+void reseta_cursor(int rows, int cols) {
     // mover para cima
-    printf("\033[%dA", lins);
+    printf("\033[%dA", rows);
     // mover para a esquerda
     printf("\033[%dD", cols);
 }
@@ -117,15 +119,19 @@ void copia_matriz(int a[ROWS][COLS], int b[ROWS][COLS]) {
             a[i][j] = b[i][j];
 }
 
-void limpa_tela() {
-    for (int i = 0; i < ROWS; i+=2) {
-        for (int j = 0; j < COLS; j++)
-            printf(" ");
-        printf("\n");
-    }
+void restaura_cursor() {
+    // reposicionar cursor
+    printf("\033[%dB", ROWS/2);
+    // mostrar cursor
+    printf("\033[?25h");
 }
 
 int main() {
+    srand(time(0));
+
+    printf("Entre com o número de linhas e o número de colunas:\n");
+    scanf("%d %d", &ROWS, &COLS);
+
     // tratar CTRL+C
     struct sigaction sa;
     prepara_sigaction(&sa);
@@ -135,11 +141,12 @@ int main() {
     // esconder cursor
     printf("\033[?25l");
 
-    int grid[ROWS][COLS] = {
-        {0, 1, 0},
-        {0, 0, 1},
-        {1, 1, 1}
-    };
+    int grid[ROWS][COLS];
+    // preencher grid
+    for (int i = 0; i < ROWS; i++)
+        for (int j = 0; j < COLS; j++)
+            grid[i][j] = rand() % 2;
+
     int buffer[ROWS][COLS];
     
     static struct termios atualconfig, novaconfig;
@@ -154,10 +161,7 @@ int main() {
 
     restaura_configs(&atualconfig);
 
-    limpa_tela();
-
-    // mostrar cursor
-    printf("\033[?25h");
+    restaura_cursor();
 
     return 0;
 }
