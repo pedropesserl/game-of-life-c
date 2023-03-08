@@ -121,7 +121,7 @@ void copia_matriz(int a[ROWS][COLS], int b[ROWS][COLS]) {
 
 void restaura_cursor() {
     // reposicionar cursor
-    printf("\033[%dB", ROWS/2);
+    printf("\033[%dB", ROWS/2 + 1);
     // mostrar cursor
     printf("\033[?25h");
 }
