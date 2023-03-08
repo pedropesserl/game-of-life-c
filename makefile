@@ -9,4 +9,4 @@ random: gol_random.c
 	gcc -o random gol_random.c $(CFLAGS)
 
 clean:
-	rm -f demo random
+	rm demo random
