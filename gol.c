@@ -4,9 +4,53 @@
 #include <sys/time.h>
 #include <sys/select.h>
 #include <termios.h>
+#include <signal.h>
 
 #define ROWS 10
 #define COLS 10
+
+int quit = 0;
+
+void trata_signint(int signum) {
+    quit = 1;
+}
+
+void prepara_sigaction(struct sigaction *sa) {
+    sa->sa_handler = trata_signint;
+    sigemptyset(&sa->sa_mask);
+}
+
+int kb_hit() {
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds);
+
+    select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
+
+    return FD_ISSET(STDIN_FILENO, &fds);
+}
+
+void prepara_terminal(struct termios *atualconfig, struct termios *novaconfig) {
+    tcgetattr(STDIN_FILENO, atualconfig);
+
+    struct termios nova;
+    memcpy(&nova, atualconfig, sizeof(struct termios));
+
+    novaconfig = &nova;
+    // desabilitar modo de input canônico e echo dos caracteres na tela
+    novaconfig->c_lflag &= ~(ICANON | ECHO);
+    // número mínimo de caracteres no input: 1
+    novaconfig->c_cc[VMIN] = 1;
+    tcsetattr(STDIN_FILENO, TCSANOW, novaconfig);
+}
+
+void restaura_configs(struct termios *atualconfig) {
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, atualconfig);
+}
 
 int conta_vizinhos(int grid[ROWS][COLS], int posx, int posy) {
     int soma = 0;
@@ -73,38 +117,6 @@ void copia_matriz(int a[ROWS][COLS], int b[ROWS][COLS]) {
             a[i][j] = b[i][j];
 }
 
-int kb_hit() {
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(STDIN_FILENO, &fds);
-
-    select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
-
-    return FD_ISSET(STDIN_FILENO, &fds);
-}
-
-void prepara_terminal(struct termios *atualconfig, struct termios *novaconfig) {
-    tcgetattr(STDIN_FILENO, atualconfig);
-
-    struct termios nova;
-    memcpy(&nova, atualconfig, sizeof(struct termios));
-
-    novaconfig = &nova;
-    // desabilitar modo de input canônico e echo dos caracteres na tela
-    novaconfig->c_lflag &= ~(ICANON | ECHO);
-    // número mínimo de caracteres no input: 1
-    novaconfig->c_cc[VMIN] = 1;
-    tcsetattr(STDIN_FILENO, TCSANOW, novaconfig);
-}
-
-void restaura_configs(struct termios *atualconfig) {
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, atualconfig);
-}
-
 void limpa_tela() {
     for (int i = 0; i < ROWS; i+=2) {
         for (int j = 0; j < COLS; j++)
@@ -114,7 +126,10 @@ void limpa_tela() {
 }
 
 int main() {
-    static struct termios atualconfig, novaconfig;
+    // tratar CTRL+C
+    struct sigaction sa;
+    prepara_sigaction(&sa);
+    sigaction(SIGINT, &sa, NULL);
 
     printf("Aperte q para sair.\n\n");
     // esconder cursor
@@ -127,9 +142,10 @@ int main() {
     };
     int buffer[ROWS][COLS];
     
+    static struct termios atualconfig, novaconfig;
     prepara_terminal(&atualconfig, &novaconfig);
 
-    while(!kb_hit() || fgetc(stdin) != 'q') {
+    while(!quit && (!kb_hit() || fgetc(stdin) != 'q')) {
         usleep(100 * 1000);
         imprime_grid(grid);
         atualiza_grid(grid, buffer);
