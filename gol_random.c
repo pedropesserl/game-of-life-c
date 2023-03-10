@@ -13,6 +13,7 @@ int COLS;
 int quit = 0;
 
 void trata_signint(int signum) {
+    (void) signum;
     quit = 1;
 }
 
