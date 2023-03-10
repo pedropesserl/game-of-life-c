@@ -2,13 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 #include <sys/select.h>
+#include <signal.h>
 #include <time.h>
 #include <termios.h>
-#include <signal.h>
-
-int ROWS;
-int COLS;
 
 int quit = 0;
 
@@ -53,34 +51,34 @@ void restaura_configs(struct termios *atualconfig) {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, atualconfig);
 }
 
-int conta_vizinhos(int grid[ROWS][COLS], int posx, int posy) {
+int conta_vizinhos(int *grid, int posx, int posy, int rows, int cols) {
     int soma = 0;
     
     for (int i = -1; i <= 1; i++)
         for (int j = -1; j <= 1; j++)
             // wrap around
-            soma += grid[ (posx + i + ROWS) % ROWS ][ (posy + j + COLS) % COLS ];
+            soma += *(grid + ((posx + i + rows) % rows)*cols + ((posy + j + cols) % cols));
 
-    soma -= grid[posx][posy];
+    soma -= *(grid + posx*cols + posy);
 
     return soma;
 }
 
-void atualiza_grid(int grid[ROWS][COLS], int buffer[ROWS][COLS]) {
-    for (int i = 0; i < ROWS; i++)
-        for (int j = 0; j < COLS; j++) {
-            int n = conta_vizinhos(grid, i, j);
+void atualiza_grid(int *grid, int *buffer, int rows, int cols) {
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++) {
+            int n = conta_vizinhos(grid, i, j, rows, cols);
 
             if (n < 2 || n > 3) 
-                buffer[i][j] = 0;
+                *(buffer + i*cols + j) = 0;
             else
                 if (n == 3)
-                    buffer[i][j] = 1;
+                    *(buffer + i*cols + j) = 1;
                 else
-                    if (grid[i][j] == 0)
-                        buffer[i][j] = 0;
+                    if (*(grid + i*cols + j) == 0)
+                        *(buffer + i*cols + j) = 0;
                     else
-                        buffer[i][j] = 1;
+                        *(buffer + i*cols + j) = 1;
         }
 }
 
@@ -91,17 +89,31 @@ void reseta_cursor(int rows, int cols) {
     printf("\033[%dD", cols);
 }
 
-void imprime_grid(int grid[ROWS][COLS]) {
+int *inicializa_grid(int rows, int cols) {
+    int *grid;
+    if ( !(grid = malloc(rows * cols * sizeof(int))) ) {
+        fprintf(stderr, "ERRO: compra mais RAM");
+        exit(1);
+    }
+
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+             *(grid + i*cols + j) = rand() % 2;
+
+    return grid;
+}
+
+void imprime_grid(int *grid, int rows, int cols) {
     // impressao subpixel
-    for (int i = 0; i < ROWS; i += 2) {
-        for (int j = 0; j < COLS; j++)
-            if (grid[i][j] == 0)
-                if (grid[i+1][j] == 0)
+    for (int i = 0; i < rows; i += 2) {
+        for (int j = 0; j < cols; j++)
+            if (*(grid + i*cols + j) == 0)
+                if (*(grid + (i+1)*cols + j) == 0)
                     printf(" ");
                 else
                     printf("▄");
             else
-                if (grid[i+1][j] == 0)
+                if (*(grid + (i+1)*cols + j) == 0)
                     printf("▀");
                 else
                     printf("█");
@@ -109,18 +121,12 @@ void imprime_grid(int grid[ROWS][COLS]) {
         printf("\n");
     }
     
-    reseta_cursor(ROWS/2, COLS);
+    reseta_cursor(rows/2, cols);
 }
 
-void copia_matriz(int a[ROWS][COLS], int b[ROWS][COLS]) {
-    for (int i = 0; i < ROWS; i++)
-        for (int j = 0; j < COLS; j++)
-            a[i][j] = b[i][j];
-}
-
-void restaura_cursor() {
+void restaura_cursor(int rows) {
     // reposicionar cursor
-    printf("\033[%dB\n", ROWS/2);
+    printf("\033[%dB\n", rows/2);
     // mostrar cursor
     printf("\033[?25h");
 }
@@ -128,39 +134,50 @@ void restaura_cursor() {
 int main() {
     srand(time(0));
 
-    printf("Entre com o número de linhas e o número de colunas:\n");
-    scanf("%d %d", &ROWS, &COLS);
+    // pegar tamanho do terminal
+    struct winsize w;
+    ioctl(0, TIOCGWINSZ, &w);
+    int ROWS = (w.ws_row - 2) * 2;
+    int COLS = w.ws_col;
 
     // tratar CTRL+C
     struct sigaction sa;
     prepara_sigaction(&sa);
     sigaction(SIGINT, &sa, NULL);
 
-    printf("Aperte q para sair.\n\n");
+    printf("Aperte q para sair.\n");
     // esconder cursor
     printf("\033[?25l");
 
-    int grid[ROWS][COLS];
-    // preencher grid
-    for (int i = 0; i < ROWS; i++)
-        for (int j = 0; j < COLS; j++)
-            grid[i][j] = rand() % 2;
+    int *grid;
+    grid = inicializa_grid(ROWS, COLS);
 
-    int buffer[ROWS][COLS];
+    int *buffer;
+    if ( !(buffer = malloc(ROWS * COLS * sizeof(int))) ) {
+        fprintf(stderr, "ERRO: compra mais RAM");
+        exit(1);
+    }
     
     static struct termios atualconfig, novaconfig;
     prepara_terminal(&atualconfig, &novaconfig);
 
-    while(!quit && (!kb_hit() || fgetc(stdin) != 'q')) {
+    while(!quit) {
         usleep(100 * 1000);
-        imprime_grid(grid);
-        atualiza_grid(grid, buffer);
-        copia_matriz(grid, buffer);
+        imprime_grid(grid, ROWS, COLS);
+        atualiza_grid(grid, buffer, ROWS, COLS);
+        memcpy(grid, buffer, ROWS * COLS * sizeof(int));
+        /* copia_matriz(grid, buffer, ROWS, COLS); */
+
+        if (kb_hit() && fgetc(stdin) == 'q')
+            quit = 1;
     };
 
     restaura_configs(&atualconfig);
 
-    restaura_cursor();
+    restaura_cursor(ROWS);
+
+    free(grid);
+    free(buffer);
 
     return 0;
 }
