@@ -1,56 +1,17 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
-#include <sys/time.h>
-#include <sys/select.h>
-#include <termios.h>
-#include <signal.h>
+#include "libterm.h"
 
 #define ROWS 10
 #define COLS 10
 
 int quit = 0;
 
-void trata_signint(int signum) {
+void trata_sigint(int signum) {
     (void) signum;
     quit = 1;
-}
-
-void prepara_sigaction(struct sigaction *sa) {
-    sa->sa_handler = trata_signint;
-    sigemptyset(&sa->sa_mask);
-}
-
-int kb_hit() {
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(STDIN_FILENO, &fds);
-
-    select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
-
-    return FD_ISSET(STDIN_FILENO, &fds);
-}
-
-void prepara_terminal(struct termios *atualconfig, struct termios *novaconfig) {
-    tcgetattr(STDIN_FILENO, atualconfig);
-
-    struct termios nova;
-    memcpy(&nova, atualconfig, sizeof(struct termios));
-
-    novaconfig = &nova;
-    // desabilitar modo de input canônico e echo dos caracteres na tela
-    novaconfig->c_lflag &= ~(ICANON | ECHO);
-    // número mínimo de caracteres no input: 1
-    novaconfig->c_cc[VMIN] = 1;
-    tcsetattr(STDIN_FILENO, TCSANOW, novaconfig);
-}
-
-void restaura_configs(struct termios *atualconfig) {
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, atualconfig);
 }
 
 int conta_vizinhos(int grid[ROWS][COLS], int posx, int posy) {
@@ -84,13 +45,6 @@ void atualiza_grid(int grid[ROWS][COLS], int buffer[ROWS][COLS]) {
         }
 }
 
-void reseta_cursor(int lins, int cols) {
-    // mover para cima
-    printf("\033[%dA", lins);
-    // mover para a esquerda
-    printf("\033[%dD", cols);
-}
-
 void imprime_grid(int grid[ROWS][COLS]) {
     // impressao subpixel
     for (int i = 0; i < ROWS; i += 2) {
@@ -109,7 +63,8 @@ void imprime_grid(int grid[ROWS][COLS]) {
         printf("\n");
     }
     
-    reseta_cursor(ROWS/2, COLS);
+    cursor_up(ROWS/2);
+    cursor_left(COLS);
 }
 
 void copia_matriz(int a[ROWS][COLS], int b[ROWS][COLS]) {
@@ -126,14 +81,10 @@ void restaura_cursor() {
 }
 
 int main() {
-    // tratar CTRL+C
-    struct sigaction sa;
-    prepara_sigaction(&sa);
-    sigaction(SIGINT, &sa, NULL);
+    prepare_sigint(trata_sigint);
 
     printf("Aperte q para sair.\n\n");
-    // esconder cursor
-    printf("\033[?25l");
+    hide_cursor();
 
     int grid[ROWS][COLS] = {
         {0, 1, 0,},
@@ -142,8 +93,8 @@ int main() {
     };
     int buffer[ROWS][COLS];
     
-    static struct termios atualconfig, novaconfig;
-    prepara_terminal(&atualconfig, &novaconfig);
+    static struct termios atualconfig;
+    disable_canonical_stdin(&atualconfig);
 
     while(!quit && (!kb_hit() || fgetc(stdin) != 'q')) {
         usleep(100 * 1000);
@@ -152,7 +103,7 @@ int main() {
         copia_matriz(grid, buffer);
     };
 
-    restaura_configs(&atualconfig);
+    set_stdin_flush(&atualconfig);
 
     restaura_cursor();
 
