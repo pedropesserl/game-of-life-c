@@ -1,3 +1,6 @@
+#ifndef LIBTERM_H_
+#define LIBTERM_H_
+
 #include <signal.h>
 #include <termios.h>
 
@@ -36,3 +39,5 @@ void set_stdin_flush(struct termios *config);
 // stores in currconfig a copy of the current stdin configs;
 // returns a struct with its new configs.
 struct termios disable_canonical_stdin(struct termios *currconfig);
+
+#endif // LIBTERM_H_

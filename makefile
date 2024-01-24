@@ -1,19 +1,19 @@
 CFLAGS = -Wall -Wextra -g
-OBJ = gol_demo.o gol_random.o gol_fsrandom.c libterm.o
-DEPS = libterm.h
+OBJ = gol_demo.o gol_random.o gol_fsrandom.o libterm.o gol.o
+DEPS = libterm.h gol.h
 
 %.o: %.c $(DEPS)
 	gcc -c -o $@ $< $(CFLAGS)
 
 all: demo random fsrandom
 
-demo: gol_demo.o libterm.o
+demo: gol_demo.o libterm.o gol.o
 	gcc -o $@ $^ $(CFLAGS)
 
-random: gol_random.o
+random: gol_random.o libterm.o gol.o
 	gcc -o $@ $^ $(CFLAGS)
 
-fsrandom: gol_fsrandom.c
+fsrandom: gol_fsrandom.o libterm.o gol.o
 	gcc -o $@ $^ $(CFLAGS)
 
 clean:
